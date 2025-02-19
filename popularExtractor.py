@@ -31,6 +31,6 @@ def display_topics(model, feature_names, no_top_words):
         print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
 
 
-if __name__ == 'main':
+if __name__ == '__main__' :
     no_top_words = 5
     display_topics(lda, vectorizer.get_feature_names_out(), no_top_words)
