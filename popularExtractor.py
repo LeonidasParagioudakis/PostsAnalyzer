@@ -9,8 +9,8 @@ import nltk
 from nltk.corpus import stopwords
 import re
 
-# Function to preprocess text
 def preprocess_text(text):
+    stop_words = set(stopwords.words('english'))
     text = re.sub(r'\W', ' ', text)  # Remove special characters
     text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
     text = text.lower()  # Convert to lowercase
@@ -88,13 +88,8 @@ def parseArgs():
 # Main function
 def main():
     args = parseArgs()
-    # print(args.input)
-    # exit(0)
     posts = list(chain.from_iterable(map(read_file, args.input)))
-    # posts = read_file(args.input)
-    # Download NLTK stopwords
-    nltk.download('stopwords')
-    stop_words = set(stopwords.words('english'))
+    posts = preprocess_text(posts)
     
     # Perform sentiment analysis
     sentiments = analyze_sentiment(posts)
