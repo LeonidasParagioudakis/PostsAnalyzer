@@ -1,18 +1,61 @@
 import argparse
 from itertools import chain
-import json
 import os
+import json
+from transformers import pipeline
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
-import numpy as np
+import nltk
+from nltk.corpus import stopwords
+import re
 
+# Function to preprocess text
+def preprocess_text(text):
+    text = re.sub(r'\W', ' ', text)  # Remove special characters
+    text = re.sub(r'\s+', ' ', text)  # Remove extra spaces
+    text = text.lower()  # Convert to lowercase
+    text = ' '.join([word for word in text.split() if word not in stop_words])  # Remove stopwords
+    return text
 
-# Display topics
-def display_topics(model, feature_names, no_top_words):
-    for topic_idx, topic in enumerate(model.components_):
-        print(f"Topic {topic_idx}:")
-        print(" ".join([feature_names[i] for i in topic.argsort()[:-no_top_words - 1:-1]]))
+def read_file(filePath):
+    try:
+        constructedPath = ''
+        if os.path.isfile(filePath):
+            constructedPath = filePath
+        elif os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), filePath)):
+            constructedPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filePath)
+        with open(constructedPath, 'r') as file:
+            data = json.load(file)
+            # Assuming each JSON file contains a list of titles
+            if isinstance(data, list):
+                return data
+            else:
+                print(f"Warning: {constructedPath} does not contain a list. Skipping.")
+                return []
+    except FileNotFoundError:
+        print(f"Error: File {filePath} not found. Skipping.")
+        return []
+    except json.JSONDecodeError:
+        print(f"Error: File {filePath} is not a valid JSON file. Skipping.")
+        return []
 
+# Function to perform sentiment analysis
+def analyze_sentiment(texts):
+    # Initialize sentiment analysis pipeline
+    sentiment_pipeline = pipeline("sentiment-analysis")
+    sentiments = sentiment_pipeline(texts)
+    return sentiments
+
+# Function to perform topic modeling
+def perform_topic_modeling(texts, n_topics=5, n_words=30):
+    vectorizer = CountVectorizer(max_df=0.95, min_df=2, stop_words='english')
+    dtm = vectorizer.fit_transform(texts)
+    lda = LatentDirichletAllocation(n_components=n_topics, random_state=42)
+    lda.fit(dtm)
+    topics = []
+    for idx, topic in enumerate(lda.components_):
+        topics.append([vectorizer.get_feature_names_out()[i] for i in topic.argsort()[:-n_words - 1:-1]])
+    return topics
 
 
 def parseArgs():
@@ -42,38 +85,31 @@ def parseArgs():
     args = parser.parse_args()
     return args
 
-def read_file(filePath):
-    try:
-        constructedPath = ''
-        if os.path.isfile(filePath):
-            constructedPath = filePath
-        elif os.path.isfile(os.path.join(os.path.dirname(os.path.abspath(__file__)), filePath)):
-            constructedPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filePath)
-        with open(constructedPath, 'r') as file:
-            data = json.load(file)
-            # Assuming each JSON file contains a list of titles
-            if isinstance(data, list):
-                return data
-            else:
-                print(f"Warning: {constructedPath} does not contain a list. Skipping.")
-                return []
-    except FileNotFoundError:
-        print(f"Error: File {filePath} not found. Skipping.")
-        return []
-    except json.JSONDecodeError:
-        print(f"Error: File {filePath} is not a valid JSON file. Skipping.")
-        return []
-
-    
-
-if __name__ == '__main__' :
+# Main function
+def main():
     args = parseArgs()
-    titles = list(chain.from_iterable(map(read_file, args.input)))
-    # Preprocessing and vectorization
-    vectorizer = CountVectorizer(stop_words='english', max_df=0.95, min_df=2)
-    title_vectors = vectorizer.fit_transform(titles)
+    # print(args.input)
+    # exit(0)
+    posts = list(chain.from_iterable(map(read_file, args.input)))
+    # posts = read_file(args.input)
+    # Download NLTK stopwords
+    nltk.download('stopwords')
+    stop_words = set(stopwords.words('english'))
     
-    lda = LatentDirichletAllocation(n_components=args.num_topics, random_state=42)
-    lda.fit(title_vectors)
+    # Perform sentiment analysis
+    sentiments = analyze_sentiment(posts)
+    negative_posts = []
+    # print("Sentiment Analysis Results:")
+    for text, sentiment in zip(posts, sentiments):
+        if sentiment['label'] == 'NEGATIVE':
+            # print(f"Text: {text}\nSentiment: {sentiment}\n")
+            negative_posts.append(text)
+    
+    # Perform topic modeling
+    topics = perform_topic_modeling(negative_posts)
+    print("Identified Topics:")
+    for idx, topic in enumerate(topics):
+        print(f"Topic {idx + 1}: {', '.join(topic)}")
 
-    display_topics(lda, vectorizer.get_feature_names_out(), args.num_top_words)
+if __name__ == "__main__":
+    main()
