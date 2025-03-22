@@ -5,7 +5,6 @@ import json
 from transformers import pipeline
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
-import nltk
 from nltk.corpus import stopwords
 import re
 
@@ -89,15 +88,14 @@ def parseArgs():
 def main():
     args = parseArgs()
     posts = list(chain.from_iterable(map(read_file, args.input)))
-    posts = preprocess_text(posts)
+    stop_words = set(stopwords.words('english'))
+    posts = list(map(preprocess_text, posts))
     
     # Perform sentiment analysis
     sentiments = analyze_sentiment(posts)
     negative_posts = []
-    # print("Sentiment Analysis Results:")
     for text, sentiment in zip(posts, sentiments):
         if sentiment['label'] == 'NEGATIVE':
-            # print(f"Text: {text}\nSentiment: {sentiment}\n")
             negative_posts.append(text)
     
     # Perform topic modeling
