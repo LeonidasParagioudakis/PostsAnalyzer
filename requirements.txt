@@ -23,7 +23,8 @@ mdurl==0.1.2
 ml_dtypes==0.5.1
 namex==0.0.8
 nltk==3.9.1
-numpy==2.0.2
+numpy==2.1.0
+nvidia-cublas-cu12==12.5.3.2
 nvidia-cublas-cu12==12.5.3.2
 nvidia-cuda-cupti-cu12==12.5.82
 nvidia-cuda-nvcc-cu12==12.5.82
@@ -47,7 +48,7 @@ requests==2.32.3
 rich==13.9.4
 safetensors==0.5.3
 scikit-learn==1.6.1
-scipy==1.13.1
+scipy==1.14.1
 six==1.17.0
 tensorboard==2.19.0
 tensorboard-data-server==0.7.2
