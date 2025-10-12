@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const os = require('os');
 
 async function crawlRedditSubreddit(subredditUrl, numPagesToCrawl = 2) {
     let browser;
@@ -23,7 +24,7 @@ async function crawlRedditSubreddit(subredditUrl, numPagesToCrawl = 2) {
         await page.goto(subredditUrl, { waitUntil: 'domcontentloaded' });
 
         // Wait for the initial content to load
-        await page.waitForSelector('article [slot="text-body"]', { timeout: 20000 });
+        await page.waitForSelector('article [slot="text-body"], article [slot="full-post-link"], shreddit-comment[author]', { timeout: 20000 });
         console.log("Initial page loaded.");
 
         for (let i = 0; i < numPagesToCrawl; i++) {
@@ -54,7 +55,7 @@ async function crawlRedditSubreddit(subredditUrl, numPagesToCrawl = 2) {
             // Extract text from visible articles
             console.log("Extracting post texts...");
             const currentPostTexts = await page.evaluate(() => {
-                const textElements = Array.from(document.querySelectorAll('article [slot="text-body"]'));
+                const textElements = Array.from(document.querySelectorAll('article [slot="text-body"], article [slot="full-post-link"], shreddit-comment[author]'));
                 return textElements.map(row => row.innerText).filter(text => text.trim() !== '');
             });
 
@@ -85,10 +86,67 @@ async function crawlRedditSubreddit(subredditUrl, numPagesToCrawl = 2) {
     return Array.from(allPostTexts); // Convert Set to Array before returning
 }
 
+function parseArgs() {
+    const parsedArgs = {}
+    const args = process.argv.slice(2);
+    if (args.length === 0) {
+        return;
+    }
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg.startsWith('--')) {
+            const key = arg.slice(2);
+            const value = args[i + 1];
+            if (value) {
+                parsedArgs[key] = value;
+                i++;
+            } else {
+                parsedArgs[key] = true;
+            }
+        }
+    }
+    return parsedArgs;
+}
+
+function randomString(length) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+}
+
+function calcucateSavePath(url) {
+        let savePath = 'data/input/';
+        try {
+        const parsedUrl = new URL(url);
+        // const urlPath = parsedUrl.pathname;
+        if (parsedUrl.pathname && parsedUrl.pathname.replace(/\//g, '_')) {
+            savePath += parsedUrl.pathname.replace(/\//g, '_');
+        } else {
+            savePath += randomString(10);
+        }
+        savePath += '.json';
+    } catch (error) {
+        console.error(`Error parsing URL: ${error.message}`);
+        process.exit(1);        
+    }
+    return savePath;
+}
+
+
 // Main execution
 (async () => {
-    const subredditUrl = 'https://www.reddit.com/r/smallbusiness/';
-    const extractedTexts = await crawlRedditSubreddit(subredditUrl, 5); // Crawl 5 "pages"
+    const args = parseArgs();
+    if (!args?.subredditUrl || !args?.numPagesToCrawl) {
+        console.log("use script like this: node craler.js --subredditUrl ... --numPagesToCrawl ...")
+        return;
+    }
+    const savePath = calcucateSavePath(args.subredditUrl);
+    // const subredditUrl = 'https://www.reddit.com/t/business/';
+    const extractedTexts = await crawlRedditSubreddit(args?.subredditUrl, args?.numPagesToCrawl); 
 
     console.log("\n--- Extracted Post Texts ---");
     extractedTexts.slice(0, 10).forEach((text, index) => { // Print first 10 for demonstration
@@ -102,5 +160,5 @@ async function crawlRedditSubreddit(subredditUrl, numPagesToCrawl = 2) {
     }
 
     // You can save this data to a file
-    fs.writeFileSync('data/input/reddit_smallbusiness_posts.json', JSON.stringify(extractedTexts, null, 2), 'utf-8');
+    fs.writeFileSync(savePath, JSON.stringify(extractedTexts, null, 2), 'utf-8');
 })();

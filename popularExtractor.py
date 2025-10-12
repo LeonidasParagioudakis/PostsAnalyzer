@@ -92,14 +92,14 @@ def main():
     posts = list(map(preprocess_text, posts))
     
     # Perform sentiment analysis
-    sentiments = analyze_sentiment(posts)
-    negative_posts = []
-    for text, sentiment in zip(posts, sentiments):
-        if sentiment['label'] == 'NEGATIVE':
-            negative_posts.append(text)
+    # sentiments = analyze_sentiment(posts)
+    # negative_posts = []
+    # for text, sentiment in zip(posts, sentiments):
+    #     if sentiment['label'] == 'NEGATIVE':
+    #         negative_posts.append(text)
     
     # Perform topic modeling
-    topics = perform_topic_modeling(negative_posts)
+    topics = perform_topic_modeling(posts)
     print("Identified Topics:")
     for idx, topic in enumerate(topics):
         print(f"Topic {idx + 1}: {', '.join(topic)}")
